@@ -1,9 +1,5 @@
-module multiplexor2_1(input [31:0] i_d0, i_d1, input i_select, output reg [31:0] o_out);
-
-  always @(*)
-    if (i_select == 0) o_out = i_d0;
-    else o_out = i_d1;
-
+module multiplexor2_1(input [31:0] i_d0, i_d1, input i_select, output [31:0] o_out);
+  assign o_out = i_select ? i_d1 : i_d0;
 endmodule
 
 module multiplexor4_1(input [31:0] i_d0, i_d1, i_d2, i_d3,
