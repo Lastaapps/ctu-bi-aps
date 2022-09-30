@@ -29,3 +29,4 @@ $(OUT): $(SOURCES) Makefile
 
 clean:
 	rm $(OUT)
+	rm *.vcd
