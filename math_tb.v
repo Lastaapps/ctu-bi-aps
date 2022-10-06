@@ -1,7 +1,7 @@
 
 module m_equeal_test();
   reg [31:0] a0, a1;
-  wire [31:0] out;
+  wire out;
 
   m_equal u_component(a0, a1, out);
 
@@ -11,7 +11,7 @@ module m_equeal_test();
     a0 = ~a0;
   end
 
-  always @(out) #1 $display( "exp %d> out: %b, a0: %b", $time, out[0], a0[0]);
+  always @(out) #1 $display( "exp %d> out: %b, a0: %b", $time, out, a0[0]);
 
 endmodule
 
