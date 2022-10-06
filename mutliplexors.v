@@ -8,10 +8,10 @@ module m_multiplexor4_1(input [31:0] i_d0, i_d1, i_d2, i_d3,
 
   always @(*)
     case (i_select)
-      0: o_out = i_d0;
-      1: o_out = i_d1;
-      2: o_out = i_d2;
-      default: o_out = i_d3;
+      0: o_out <= i_d0;
+      1: o_out <= i_d1;
+      2: o_out <= i_d2;
+      default: o_out <= i_d3;
     endcase
 
 endmodule

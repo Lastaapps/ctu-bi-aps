@@ -13,14 +13,14 @@ default: compile
 compile: $(OUT)
 
 run:
-	./$(OUT)
+	./$(OUT) | tee out.txt
 
 show:
 	$(GTK) $(OUTPUTS) &
 	@echo
 
 test: $(OUT)
-	./$(OUT)
+	./$(OUT) | tee out.txt
 	$(GTK) $(OUTPUTS) &
 	@echo
 

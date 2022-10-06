@@ -46,7 +46,3 @@ module m_multiplexor4_1_test();
 
 endmodule
 
-
-
-
-
