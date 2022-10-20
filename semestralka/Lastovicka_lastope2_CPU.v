@@ -45,23 +45,84 @@ endmodule
   * @return o_mem - memori write enable
   * @return o_branch - branching is happening
   */
-module m_controller(input [2:0] i_opt, output [1:0] o_aluCtl, output o_aluSrc, o_regWr, o_memWr, o_br);
-  reg [5:0] out;
-  assign {o_aluCtl, o_aluSrc, o_regWr, o_memWr, o_br} = out;
+//module m_controller(input [2:0] i_opt,
+//                    output o_immControl,
+//                    output o_aluSrc,
+//                    output [1:0] o_aluCtl,
+//                    output o_mem_write,
+//                    output o_mem_to_reg_write,
+//                    output o_reg_write,
+//                    output o_br_jalr,
+//                    output o_br_jal,
+//                    output o_br_beq
+//                  );
+//  reg [5:0] out;
+//  assign {o_aluCtl, o_aluSrc, o_regWr, o_memWr, o_br} = out;
+//
+//  always @(*)
+//    case (i_opt)
+//      //opt          aCtl aSrc regWr memWr branch
+//      'b000: out <= 'b00_____0_____1_____0______0; // add
+//      'b001: out <= 'b00_____1_____1_____0______0; // addi
+//      'b010: out <= 'b01_____0_____1_____0______0; // sub
+//      'b011: out <= 'b00_____1_____1_____0______0; // lw
+//      'b100: out <= 'b00_____1_____0_____1______0; // sw
+//      'b101: out <= 'b01_____0_____0_____0______1; // beq
+//      default: out <= 0;
+//    endcase
+//endmodule
 
-  always @(*)
-    case (i_opt)
-      //opt          aCtl aSrc regWr memWr branch
-      'b000: out <= 'b00_____0_____1_____0______0;
-      'b001: out <= 'b00_____1_____1_____0______0;
-      'b010: out <= 'b01_____0_____1_____0______0;
-      'b011: out <= 'b00_____1_____1_____0______0;
-      'b100: out <= 'b00_____1_____0_____1______0;
-      'b101: out <= 'b01_____0_____0_____0______1;
-      default: out <= 0;
-    endcase
+/* Decodes data stored in an instruction
+* R - 000
+* I - 001
+* S - 010
+* B - 011
+* U - 100
+* J - 101
+*/
+module m_imm_decoder(input [31:0] i_data, input [1:0] i_imm_ctl, output [31:0] o_data);
+  wire [31:0] r, i, s, b, u, j;
+  m_imm_dec_R u_r(i_data, r);
+  m_imm_dec_I u_i(i_data, i);
+  m_imm_dec_S u_s(i_data, s);
+  m_imm_dec_B u_b(i_data, b);
+  m_imm_dec_U u_u(i_data, u);
+  m_imm_dec_J u_j(i_data, j);
+  assign o_data =
+    i_imm_ctl == 0 ? r : 
+    i_imm_ctl == 1 ? i : 
+    i_imm_ctl == 2 ? s : 
+    i_imm_ctl == 3 ? b : 
+    i_imm_ctl == 4 ? u : 
+    i_imm_ctl == 5 ? j : 
+    0;
 endmodule
 
+module m_imm_dec_R(input [31:0] i_data, output [31:0] o_data);
+  assign o_data = 0;
+endmodule
+
+module m_imm_dec_I(input [31:0] i_data, output [31:0] o_data);
+  assign o_data = {{20{i_data[31]}}, i_data[11:0]};
+endmodule
+
+module m_imm_dec_S(input [31:0] i_data, output [31:0] o_data);
+  assign o_data = {{20{i_data[31]}}, i_data[31:25], i_data[11:7]};
+endmodule
+
+module m_imm_dec_B(input [31:0] i_data, output [31:0] o_data);
+  assign o_data = {{19{i_data[31]}}, i_data[7], i_data[30:25], i_data[11:8]};
+endmodule
+
+module m_imm_dec_U(input [31:0] i_data, output [31:0] o_data);
+  wire [11:0] zero = 0;
+  assign o_data = {i_data[31:12], zero};
+endmodule
+
+module m_imm_dec_J(input [31:0] i_data, output [31:0] o_data);
+  wire zero = 0;
+  assign o_data = {{11{i_data[31]}}, i_data[19:12], i_data[20], i_data[30:21], zero};
+endmodule
 
 /** ALU
   * @param i_d0, i_d1 - registers to sum
@@ -77,7 +138,7 @@ module m_alu(input [31:0] i_d0, i_d1, input [1:0] i_ctl, output reg [31:0] o_dat
   assign add = i_d0 + i_d1;
   assign sub = i_d0 - i_d1;
   assign x_or = i_d0 ^ i_d1;
-  assign or_zero = o_data == 0;
+  assign o_zero = o_data == 0;
 
   always @(*) begin
     case (i_ctl)
