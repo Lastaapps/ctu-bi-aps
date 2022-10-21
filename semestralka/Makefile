@@ -6,7 +6,7 @@ OUT = modules
 # rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 # SOURCES := $(call rwildcard,.,*.v)
 # SOURCES := $(wildcard *.v)
-SOURCES := cpu.v
+SOURCES := cpu.v computer.v
 OUTPUTS := $(wildcard *.vcd)
 
 default: compile

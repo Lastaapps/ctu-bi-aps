@@ -1,3 +1,4 @@
 modules
 *.vcd
 out.txt
+memfile_*
