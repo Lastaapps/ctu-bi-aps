@@ -1,14 +1,59 @@
 `default_nettype none
-module processor( input i_clk, _reset,
+module m_processor( input i_clk, i_reset,
                   output [31:0] o_PC,
-                  input  [31:0] i_instruction,
+                  input  [31:0] i_inst,
                   output o_WE,
                   output [31:0] o_address_to_mem,
                   output [31:0] o_data_to_mem,
                   input  [31:0] i_data_from_mem
                 );
+  // blue controller wires
+  wire [2:0] imm_ctl;
+  wire alu_src;
+  wire [3:0] alu_ctl;
+  wire mem_write, mem_to_reg, reg_write, imm_to_reg;
+  wire br_jalr, br_jal, br_beq, br_bne, br_blt;
+  wire br_outcome, br_jalx;
+  wire aui;
 
+  wire [31:0]
+    pc, pc_plus, imm_op, pc_imm,
+    rs0, rs1,
+    alu_src_a, alu_src_b, alu_out,
+    br_target, res,
+    tmp0, tmp1, tmp2;
+  wire alu_zero, alu_gt;
 
+  // PC
+  wire [31:0] pc_new;
+  m_reset u_pc_reg(i_clk, i_reset, pc_new, o_PC);
+
+  // Linking wires
+  assign alu_src_a = rs0;
+  assign alu_src_b = alu_src ? imm_op : rs1;
+  assign o_data_to_mem = rs1;
+  assign o_address_to_mem = alu_out;
+  assign o_WE = mem_write;
+  assign pc_plus = pc + 4;
+  assign o_PC = pc;
+  assign pc_imm = pc + imm_op;
+  assign br_outcome = (br_beq & alu_zero) | (br_bne & ~alu_zero) | (br_blt & alu_gt) | br_jal | br_jalr;
+  assign pc_new = br_outcome ? br_target : pc_plus;
+  assign br_target = br_jalr ? alu_out : pc_imm;
+  assign tmp0 = br_jalx ? pc_plus : alu_out;
+  assign tmp1 = aui ? pc_imm : tmp0;
+  assign tmp2 = imm_to_reg ? imm_op : tmp1;
+  assign res = mem_to_reg ? i_data_from_mem : tmp2;
+  
+  // Components
+  m_controller u_ctl(i_inst,
+    imm_ctl, alu_src, alu_ctl,
+    mem_write, mem_to_reg, reg_write, imm_to_reg,
+    br_jalr, br_jal, br_beq, br_bne, br_blt, aui
+  );
+  m_register u_reg(i_inst, i_clk, reg_write, res, rs0, rs1);
+  m_imm_decoder u_imm_dec(i_inst, imm_ctl, imm_op);
+  m_alu u_alu(alu_src_a, alu_src_b, alu_ctl, alu_out, alu_zero, alu_gt);
 endmodule
 
 
@@ -18,20 +63,16 @@ endmodule
   * @param i_we - write enabled
   * @return o_a0, o_a1 - content of registers referenced by i_ar0 and i_ar1
   */
-module m_register(input [4:0] i_ar0, i_ar1, i_aw, input i_clk, i_we, input [31:0] i_wd, output reg [31:0] o_a0, o_a1);
+module m_register(input [31:0] i_inst, input i_clk, i_we, input [31:0] i_wd, output [31:0] o_a0, o_a1);
   reg [31:0] matrix [31:0];
 
-  always @(*) begin
-    if (i_ar0 == 0) o_a0 <= 0;
-    else o_a0 <= matrix[i_ar0];
-  end
-  always @(*) begin
-    if (i_ar1 == 0) o_a1 <= 0;
-    else o_a1 <= matrix[i_ar1];
-  end
+  wire [4:0] ar0 = i_inst[19:15], ar1 = i_inst[24:20], aw = i_inst[11:7];
+
+  assign o_a0 = ar0 == 0 ? 0 : matrix[ar0];
+  assign o_a1 = ar1 == 0 ? 0 : matrix[ar1];
 
   always @(posedge i_clk) begin
-    if (i_we) matrix[i_aw] <= i_wd;
+    if (i_we) matrix[aw] <= i_wd;
     else ;
   end
 endmodule
@@ -116,7 +157,7 @@ endmodule
 * U - 100
 * J - 101
 */
-module m_imm_decoder(input [31:0] i_data, input [1:0] i_imm_ctl, output [31:0] o_data);
+module m_imm_decoder(input [31:0] i_data, input [2:0] i_imm_ctl, output [31:0] o_data);
   wire [31:0] r, i, s, b, u, j;
   m_imm_dec_R u_r(i_data, r);
   m_imm_dec_I u_i(i_data, i);
@@ -175,7 +216,7 @@ endmodule
   * @return o_data - operation result
   * @return o_zero - 1 if the operation result is 0
   */
-module m_alu(input [31:0] i_d0, i_d1, input [1:0] i_ctl, output [31:0] o_data, output o_zero);
+module m_alu(input [31:0] i_d0, i_d1, input [3:0] i_ctl, output [31:0] o_data, output o_zero, output o_gt);
   wire [31:0] w_add = i_d0 + i_d1;
   wire [31:0] w_sub = i_d0 - i_d1;
   wire [31:0] w_and = i_d0 ^ i_d1;
@@ -199,6 +240,7 @@ module m_alu(input [31:0] i_d0, i_d1, input [1:0] i_ctl, output [31:0] o_data, o
     0;
 
   assign o_zero = result == 0;
+  assign o_gt = i_d0 < i_d1;
   assign o_data = result;
 endmodule
 
@@ -254,5 +296,14 @@ module m_reset(input i_clk, i_reset, input [31:0] i_data, output reg [31:0] o_ou
 endmodule
 
 
-
+module processor( input clk, reset,
+                  output [31:0] PC,
+                  input  [31:0] instruction,
+                  output        WE,
+                  output [31:0] address_to_mem,
+                  output [31:0] data_to_mem,
+                  input  [31:0] data_from_mem
+                );
+  m_processor u_cpu(clk, reset, PC, instruction, WE, address_to_mem, data_to_mem, data_from_mem);
+endmodule
 `default_nettype wire 
