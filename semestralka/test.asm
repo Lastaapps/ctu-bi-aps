@@ -41,6 +41,24 @@ test00_skip3:
 test00_skip4:
 	addi	s0, s0, 1
 	
+	
+	# tests jumps to negative offsets (decoding test)
+	j	test00_5_p0
+test00_5_p1:
+	j	test00_5_skip
+test00_5_p0:
+	j	test00_5_p1
+	j	failed
+test00_5_skip:
+
+	beq	x0, x0, test00_6_p0
+test00_6_p1:
+	beq	x0, x0, test00_6_skip
+test00_6_p0:
+	beq	x0, x0, test00_6_p1
+	beq	x0, x0, failed
+test00_6_skip:
+
 
 # ALU test
 	li	t0, 5
@@ -73,9 +91,31 @@ test00_skip4:
 	bne	t2, t3, failed
 	addi	s0, s0, 1
 	
+	# sltu
+	li	t2, 0
+	li	t5, -1
+	sltu	t3, t5, t0
+	bne	t2, t3, failed
+	li	t2, 1
+	sltu	t3, t0, t5
+	bne	t2, t3, failed
+	addi	s0, s0, 1
+	
 	# and
 	li	t2, 1
 	and	t3, t0, t1
+	bne	t2, t3, failed
+	addi	s0, s0, 1
+	
+	# or
+	li	t2, 7
+	or	t3, t0, t1
+	bne	t2, t3, failed
+	addi	s0, s0, 1
+	
+	# xor
+	li	t2, 6
+	xor	t3, t0, t1
 	bne	t2, t3, failed
 	addi	s0, s0, 1
 	

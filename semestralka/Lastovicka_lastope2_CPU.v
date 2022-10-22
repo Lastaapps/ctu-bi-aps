@@ -141,33 +141,51 @@ module m_controller(input [31:0] i_inst,
                     output o_br_blt,
                     output o_aui);
 
+  // register arithmetic
   wire [17:0] s_add  = 'b000_0_0000_0010_00000_0; // add
-  wire [17:0] s_addi = 'b001_1_0000_0010_00000_0; // add immediate
   wire [17:0] s_and  = 'b000_0_0010_0010_00000_0; // and
   wire [17:0] s_sub  = 'b000_0_0001_0010_00000_0; // substitute
   wire [17:0] s_slt  = 'b000_0_0011_0010_00000_0; // compare, a < b -> 1
+  wire [17:0] s_sltu = 'b000_0_1011_0010_00000_0; // compare, a < b -> 1
   wire [17:0] s_div  = 'b000_0_0100_0010_00000_0; // divide
   wire [17:0] s_rem  = 'b000_0_0101_0010_00000_0; // modulo
-
-  wire [17:0] s_beq  = 'b011_0_0001_0000_00100_0; // branch equal
-  wire [17:0] s_bne  = 'b011_0_0001_0000_00010_0; // branch not equal
-  wire [17:0] s_blt  = 'b011_0_0000_0000_00001_0; // jump if a < b
-
-  wire [17:0] s_lw   = 'b001_1_0000_0110_00000_0; // load word
-  wire [17:0] s_sw   = 'b010_1_0000_1000_00000_0; // save word
-  wire [17:0] s_lui  = 'b100_1_0000_0011_00000_0; // load immediate
-
-  wire [17:0] s_jal  = 'b101_0_0000_0010_01000_0; // jump relative to PC
-  wire [17:0] s_jalr = 'b001_1_0000_0010_10000_0; // jump relative to rd
-  wire [17:0] s_aui  = 'b100_0_0000_0010_00000_1; // rd <- rn + PC
-
+  wire [17:0] s_or   = 'b000_0_1001_0010_00000_0; // or
+  wire [17:0] s_xor  = 'b000_0_1010_0010_00000_0; // xor
   wire [17:0] s_sll  = 'b000_0_0110_0010_00000_0; // logical left shift
   wire [17:0] s_srl  = 'b000_0_0111_0010_00000_0; // logical left shift
   wire [17:0] s_sra  = 'b000_0_1000_0010_00000_0; // arithmetic left shift
 
+  // immediate arithmetic
+  wire [17:0] s_addi  = 'b001_1_0000_0010_00000_0; // add immediate
+  wire [17:0] s_andi  = 'b001_1_0010_0010_00000_0; // and immediate
+  wire [17:0] s_slti  = 'b001_1_0011_0010_00000_0; // compare, a < b -> 1 immediate
+  wire [17:0] s_sltiu = 'b001_1_1011_0010_00000_0; // compare, a < b -> 1 immediate
+  wire [17:0] s_ori   = 'b001_1_1001_0010_00000_0; // or immediate
+  wire [17:0] s_xori  = 'b001_1_1010_0010_00000_0; // xor immediate
+  wire [17:0] s_slli  = 'b110_1_0110_0010_00000_0; // logical left shift immediate
+  wire [17:0] s_srli  = 'b110_1_0111_0010_00000_0; // logical left shift immediate
+  wire [17:0] s_srai  = 'b110_1_1000_0010_00000_0; // arithmetic left shift immediate
+
+  // branching
+  wire [17:0] s_beq  = 'b011_0_0001_0000_00100_0; // branch equal
+  wire [17:0] s_bne  = 'b011_0_0001_0000_00010_0; // branch not equal
+  wire [17:0] s_blt  = 'b011_0_0000_0000_00001_0; // jump if a < b
+
+  // memory
+  wire [17:0] s_lw   = 'b001_1_0000_0110_00000_0; // load word
+  wire [17:0] s_sw   = 'b010_1_0000_1000_00000_0; // save word
+  wire [17:0] s_lui  = 'b100_1_0000_0011_00000_0; // load immediate
+
+  // jumping
+  wire [17:0] s_jal  = 'b101_0_0000_0010_01000_0; // jump relative to PC
+  wire [17:0] s_jalr = 'b001_1_0000_0010_10000_0; // jump relative to rd
+  wire [17:0] s_aui  = 'b100_0_0000_0010_00000_1; // rd <- rn + PC
+
+  // parsing
   wire [6:0] opt  = i_inst[6:0];
   wire [3:0] fun3 = i_inst[14:12];
   wire [6:0] fun7 = i_inst[31:25];
+
   wire [31:0] out = 
     opt == 'b0110011 ? ( 
       fun3 == 'b000 ? 
@@ -179,34 +197,53 @@ module m_controller(input [31:0] i_inst,
       fun3 == 'b111 ? 
         fun7 == 'b0000000 ? s_and : 0 : // and
       fun3 == 'b100 ?
-        fun7 == 'b0000001 ? s_div : 0 : // div
+        fun7 == 'b0000000 ? s_xor : // xor
+        fun7 == 'b0000001 ? s_div : // div
+        0 :
       fun3 == 'b110 ?
-        fun7 == 'b0000001 ? s_rem : 0 : // rem
+        fun7 == 'b0000000 ? s_or  : // or
+        fun7 == 'b0000001 ? s_rem : // rem
+        0 :
       fun3 == 'b001 ?
         fun7 == 'b0000000 ? s_sll : 0 : // sll
       fun3 == 'b101 ?
         fun7 == 'b0000000 ? s_srl : // srl
         fun7 == 'b0100000 ? s_sra : // sra
-        0 : 0) :
-      opt == 'b0010011 ? 
-        fun3 == 'b000 ? s_addi : 0 : // addi
-
-      opt == 'b1100011 ? 
-        fun3 == 'b000 ? s_beq  : // beq
-        fun3 == 'b001 ? s_bne  : // bne
-        fun3 == 'b100 ? s_blt  : // blt
         0 :
+      fun3 == 'b011 ?
+        fun7 == 'b0000000 ? s_sltu : 0 : // sltu
+    0) :
 
-      opt == 'b0000011 ?
-        fun3 == 'b010 ? s_lw   : 0 : // lw
-      opt == 'b0100011 ?
-        fun3 == 'b010 ? s_sw   : 0 : // sw
-      opt == 'b0110111 ? s_lui  : // lui
+    opt == 'b0010011 ? 
+      fun3 == 'b000 ? s_addi : // addi
+      fun3 == 'b001 ? s_slli : // slli
+      fun3 == 'b010 ? s_slti : // slti
+      fun3 == 'b011 ? s_sltiu : // sltiu
+      fun3 == 'b100 ? s_xori : // xori
+      fun3 == 'b101 ?
+        fun7 == 'b0000000 ? s_srli : // srli
+        fun7 == 'b0100000 ? s_srai : // srai
+        0 :
+      fun3 == 'b110 ? s_ori : // ori
+      fun3 == 'b111 ? s_andi : // andi
+      0 :
 
-      opt == 'b1101111 ? s_jal  : // jal
-      opt == 'b1100111 ? 
-        fun3 == 'b000 ? s_jalr : 0 : // jalr
-      opt == 'b0010111 ? s_aui  : // auipc
+    opt == 'b1100011 ? 
+      fun3 == 'b000 ? s_beq  : // beq
+      fun3 == 'b001 ? s_bne  : // bne
+      fun3 == 'b100 ? s_blt  : // blt
+      0 :
+
+    opt == 'b0000011 ?
+      fun3 == 'b010 ? s_lw   : 0 : // lw
+    opt == 'b0100011 ?
+      fun3 == 'b010 ? s_sw   : 0 : // sw
+    opt == 'b0110111 ? s_lui  : // lui
+
+    opt == 'b1101111 ? s_jal  : // jal
+    opt == 'b1100111 ? 
+      fun3 == 'b000 ? s_jalr : 0 : // jalr
+    opt == 'b0010111 ? s_aui  : // auipc
    0;
 
   assign {
@@ -231,15 +268,17 @@ endmodule
 * B - 011
 * U - 100
 * J - 101
+* I'- 110
 */
 module m_imm_decoder(input [31:0] i_data, input [2:0] i_imm_ctl, output [31:0] o_data);
-  wire [31:0] r, i, s, b, u, j;
+  wire [31:0] r, i, s, b, u, j, is;
   m_imm_dec_R u_r(i_data, r);
   m_imm_dec_I u_i(i_data, i);
   m_imm_dec_S u_s(i_data, s);
   m_imm_dec_B u_b(i_data, b);
   m_imm_dec_U u_u(i_data, u);
   m_imm_dec_J u_j(i_data, j);
+  m_imm_dec_I_short u_j_s(i_data, is);
 
   assign o_data =
     i_imm_ctl == 0 ? r : 
@@ -248,6 +287,7 @@ module m_imm_decoder(input [31:0] i_data, input [2:0] i_imm_ctl, output [31:0] o
     i_imm_ctl == 3 ? b : 
     i_imm_ctl == 4 ? u : 
     i_imm_ctl == 5 ? j : 
+    i_imm_ctl == 6 ? is : 
     0;
 
   // always @(*) #1 $display("dec: %b - %b -> %b(%h)", i_imm_ctl, i_data, o_data, o_data);
@@ -259,6 +299,10 @@ endmodule
 
 module m_imm_dec_I(input [31:0] i_data, output [31:0] o_data);
   assign o_data = {{20{i_data[31]}}, i_data[31:20]};
+endmodule
+
+module m_imm_dec_I_short(input [31:0] i_data, output [31:0] o_data);
+  assign o_data = {{27{i_data[24]}}, i_data[24:20]};
 endmodule
 
 module m_imm_dec_S(input [31:0] i_data, output [31:0] o_data);
@@ -297,30 +341,42 @@ endmodule
   *   0110 - sll
   *   0111 - srl
   *   1000 - sra
+  *   1001 - or
+  *   1010 - xor
+  *   1011 - sltu
   * @return o_data - operation result
   * @return o_zero - 1 if the operation result is 0
   */
 module m_alu(input signed [31:0] i_d0, i_d1, input [3:0] i_ctl, output [31:0] o_data, output o_zero, output o_gt);
-  wire [31:0] w_add = i_d0 + i_d1;
-  wire [31:0] w_sub = i_d0 - i_d1;
-  wire [31:0] w_and = i_d0 & i_d1;
-  wire [31:0] w_slt = i_d0 < i_d1 ? 1 : 0;
-  wire [31:0] w_div = i_d0 / i_d1;
-  wire [31:0] w_rem = i_d0 % i_d1;
-  wire [31:0] w_sll = i_d0 << i_d1;
-  wire [31:0] w_srl = i_d0 >> i_d1;
-  wire [31:0] w_sra = i_d0 >>> i_d1;
+  wire [31:0] unsigned_d0 = i_d0;
+  wire [31:0] unsigned_d1 = i_d1;
+
+  wire [31:0] w_add  = i_d0 + i_d1;
+  wire [31:0] w_sub  = i_d0 - i_d1;
+  wire [31:0] w_and  = i_d0 & i_d1;
+  wire [31:0] w_slt  = i_d0 < i_d1 ? 1 : 0;
+  wire [31:0] w_div  = i_d0 / i_d1;
+  wire [31:0] w_rem  = i_d0 % i_d1;
+  wire [31:0] w_sll  = i_d0 << i_d1;
+  wire [31:0] w_srl  = i_d0 >> i_d1;
+  wire [31:0] w_sra  = i_d0 >>> i_d1;
+  wire [31:0] w_or   = i_d0 | i_d1;
+  wire [31:0] w_xor  = i_d0 ^ i_d1;
+  wire [31:0] w_sltu = unsigned_d0 < unsigned_d1 ? 1 : 0;
 
   wire [31:0] result =
-    i_ctl == 'b0000 ? w_add :
-    i_ctl == 'b0001 ? w_sub :
-    i_ctl == 'b0010 ? w_and :
-    i_ctl == 'b0011 ? w_slt :
-    i_ctl == 'b0100 ? w_div :
-    i_ctl == 'b0101 ? w_rem :
-    i_ctl == 'b0110 ? w_sll :
-    i_ctl == 'b0111 ? w_srl :
-    i_ctl == 'b1000 ? w_sra :
+    i_ctl == 'b0000 ? w_add  :
+    i_ctl == 'b0001 ? w_sub  :
+    i_ctl == 'b0010 ? w_and  :
+    i_ctl == 'b0011 ? w_slt  :
+    i_ctl == 'b0100 ? w_div  :
+    i_ctl == 'b0101 ? w_rem  :
+    i_ctl == 'b0110 ? w_sll  :
+    i_ctl == 'b0111 ? w_srl  :
+    i_ctl == 'b1000 ? w_sra  :
+    i_ctl == 'b1001 ? w_or   :
+    i_ctl == 'b1010 ? w_xor  :
+    i_ctl == 'b1011 ? w_sltu :
     0;
 
   // always @(*) #1 $display("alu: %h %b %h -> %h", i_d0, i_ctl, i_d1, result);
@@ -331,50 +387,9 @@ module m_alu(input signed [31:0] i_d0, i_d1, input [3:0] i_ctl, output [31:0] o_
   assign o_data = result;
 endmodule
 
-
-// Math library
-module m_adder(input [31:0] i_a, i_b, input i_c0, output [31:0] o_sum, output o_c32);
-  assign {o_c32, o_sum} = i_a + i_b + i_c0;
-endmodule
-
-module m_multiply4(input [31:0] i_d0, output [31:0] o_out);
-  wire [1:0] trash;
-  assign {trash, o_out} = 4 * i_d0;
-endmodule
-
-module m_equal(input [31:0] i_d0, i_d1, output o_out);
-  assign o_out = i_d0 == i_d1;
-endmodule
-
-module m_expand(input [15:0] i_d0, output [31:0] o_out);
-  assign o_out = {{16{i_d0[15]}}, i_d0};
-endmodule
-
-// Multiplexors
-module m_multiplexor2_1(input [31:0] i_d0, i_d1, input i_select, output [31:0] o_out);
-  assign o_out = i_select ? i_d1 : i_d0;
-endmodule
-
-module m_multiplexor4_1(input [31:0] i_d0, i_d1, i_d2, i_d3,
-  input [1:0] i_select, output reg [31:0] o_out);
-
-  always @(*)
-    case (i_select)
-      0: o_out <= i_d0;
-      1: o_out <= i_d1;
-      2: o_out <= i_d2;
-      default: o_out <= i_d3;
-    endcase
-endmodule
-
-
-// Register utilities
-module m_send(input i_clk, input [31:0] i_data, output reg [31:0] o_out);
-  always @(posedge i_clk) begin
-    o_out <= i_data;
-  end
-endmodule
-
+/**
+  * Reset-able register
+  */
 module m_reset(input i_clk, i_reset, input [31:0] i_data, output reg [31:0] o_out);
   always @(posedge i_clk) begin
     if (i_reset) o_out <= 0;

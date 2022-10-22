@@ -71,7 +71,7 @@ module m_imm();
 
   initial begin
     in <= -1;
-    #2 ctl <= 0; #2 ctl <= 1; #2 ctl <= 2; #2 ctl <= 3; #2 ctl <= 4; #2 ctl <= 5;
+    #2 ctl <= 0; #2 ctl <= 1; #2 ctl <= 2; #2 ctl <= 3; #2 ctl <= 4; #2 ctl <= 5; #2 ctl <= 6;
   end
 
   always @(*) #1 $display("imm: %b -> %h", ctl, out);
