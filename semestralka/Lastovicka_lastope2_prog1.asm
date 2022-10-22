@@ -1,6 +1,6 @@
 	
 	lw	s0, 4(x0)
-	li	s1, 8
+	lw	s1, 8(x0)
 
 loop:
 	beq	s0, x0, end
@@ -36,3 +36,4 @@ prime_fail:
 	li	a0, 0
 	ret
 end:
+	j end

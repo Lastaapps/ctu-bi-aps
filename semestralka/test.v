@@ -50,7 +50,8 @@ module m_testbench();
     $dumpfile("test");
     $dumpvars;
     reset<=1; # 8; reset<=0;
-    #1024;
+    // #1024;
+    #65_536;
     $writememh ("memfile_data_after_simulation.hex", u_simulated_system.u_dmem.RAM, 0, 127);
     $finish;
   end
@@ -60,3 +61,20 @@ module m_testbench();
     clk<=1; # 4; clk<=0; # 4;
   end
 endmodule
+
+module m_imm();
+  reg [31:0] in;
+  reg [2:0] ctl;
+  wire [31:0] out;
+
+  m_imm_decoder u_imm(in, ctl, out);
+
+  initial begin
+    in <= -1;
+    #2 ctl <= 0; #2 ctl <= 1; #2 ctl <= 2; #2 ctl <= 3; #2 ctl <= 4; #2 ctl <= 5;
+  end
+
+  always @(*) #1 $display("imm: %b -> %h", ctl, out);
+
+endmodule
+

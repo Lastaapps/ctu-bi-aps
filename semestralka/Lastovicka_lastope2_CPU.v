@@ -45,7 +45,8 @@ module m_processor( input i_clk, i_reset,
   assign tmp1 = aui ? pc_imm : tmp0;
   assign tmp2 = imm_to_reg ? imm_op : tmp1;
   assign res = mem_to_reg ? i_data_from_mem : tmp2;
-  
+
+
   // Components
   m_controller u_ctl(
     i_inst,
@@ -82,38 +83,40 @@ module m_register(input [31:0] i_inst, input i_clk, i_we, input [31:0] i_wd, out
   // always @(*) #1 $display("reg outA:  %h", o_a0);
   // always @(*) #1 $display("reg outB:  %h", o_a1);
 
-  // always @(matrix[0]) #1 $display("x0: %h", matrix[0]);
-  // always @(matrix[1]) #1 $display("ra: %h", matrix[1]);
-  // always @(matrix[2]) #1 $display("sp: %h", matrix[2]);
-  // always @(matrix[3]) #1 $display("gp: %h", matrix[3]);
-  // always @(matrix[4]) #1 $display("tp: %h", matrix[4]);
-  // always @(matrix[5]) #1 $display("t0: %h", matrix[5]);
-  // always @(matrix[6]) #1 $display("t1: %h", matrix[6]);
-  // always @(matrix[7]) #1 $display("t2: %h", matrix[7]);
-  // always @(matrix[8]) #1 $display("s0: %h", matrix[8]);
-  // always @(matrix[9]) #1 $display("s1: %h", matrix[9]);
-  // always @(matrix[10]) #1 $display("a0: %h", matrix[10]);
-  // always @(matrix[11]) #1 $display("a1: %h", matrix[11]);
-  // always @(matrix[12]) #1 $display("a2: %h", matrix[12]);
-  // always @(matrix[13]) #1 $display("a3: %h", matrix[13]);
-  // always @(matrix[14]) #1 $display("a4: %h", matrix[14]);
-  // always @(matrix[15]) #1 $display("a5: %h", matrix[15]);
-  // always @(matrix[16]) #1 $display("a6: %h", matrix[16]);
-  // always @(matrix[17]) #1 $display("a7: %h", matrix[17]);
-  // always @(matrix[18]) #1 $display("s2: %h", matrix[18]);
-  // always @(matrix[19]) #1 $display("s3: %h", matrix[19]);
-  // always @(matrix[20]) #1 $display("s4: %h", matrix[20]);
-  // always @(matrix[21]) #1 $display("s5: %h", matrix[21]);
-  // always @(matrix[22]) #1 $display("s6: %h", matrix[22]);
-  // always @(matrix[23]) #1 $display("s7: %h", matrix[23]);
-  // always @(matrix[24]) #1 $display("s8: %h", matrix[24]);
-  // always @(matrix[25]) #1 $display("s9: %h", matrix[25]);
-  // always @(matrix[26]) #1 $display("sa: %h", matrix[26]);
-  // always @(matrix[27]) #1 $display("sb: %h", matrix[27]);
-  // always @(matrix[28]) #1 $display("t3: %h", matrix[28]);
-  // always @(matrix[29]) #1 $display("t4: %h", matrix[29]);
-  // always @(matrix[30]) #1 $display("t5: %h", matrix[30]);
-  // always @(matrix[31]) #1 $display("t6: %h", matrix[31]);
+  /*
+  always @(matrix[0]) #1 $display("x0: %h", matrix[0]);
+  always @(matrix[1]) #1 $display("ra: %h", matrix[1]);
+  always @(matrix[2]) #1 $display("sp: %h", matrix[2]);
+  always @(matrix[3]) #1 $display("gp: %h", matrix[3]);
+  always @(matrix[4]) #1 $display("tp: %h", matrix[4]);
+  always @(matrix[5]) #1 $display("t0: %h", matrix[5]);
+  always @(matrix[6]) #1 $display("t1: %h", matrix[6]);
+  always @(matrix[7]) #1 $display("t2: %h", matrix[7]);
+  always @(matrix[8]) #1 $display("s0: %h", matrix[8]);
+  always @(matrix[9]) #1 $display("s1: %h", matrix[9]);
+  always @(matrix[10]) #1 $display("a0: %h", matrix[10]);
+  always @(matrix[11]) #1 $display("a1: %h", matrix[11]);
+  always @(matrix[12]) #1 $display("a2: %h", matrix[12]);
+  always @(matrix[13]) #1 $display("a3: %h", matrix[13]);
+  always @(matrix[14]) #1 $display("a4: %h", matrix[14]);
+  always @(matrix[15]) #1 $display("a5: %h", matrix[15]);
+  always @(matrix[16]) #1 $display("a6: %h", matrix[16]);
+  always @(matrix[17]) #1 $display("a7: %h", matrix[17]);
+  always @(matrix[18]) #1 $display("s2: %h", matrix[18]);
+  always @(matrix[19]) #1 $display("s3: %h", matrix[19]);
+  always @(matrix[20]) #1 $display("s4: %h", matrix[20]);
+  always @(matrix[21]) #1 $display("s5: %h", matrix[21]);
+  always @(matrix[22]) #1 $display("s6: %h", matrix[22]);
+  always @(matrix[23]) #1 $display("s7: %h", matrix[23]);
+  always @(matrix[24]) #1 $display("s8: %h", matrix[24]);
+  always @(matrix[25]) #1 $display("s9: %h", matrix[25]);
+  always @(matrix[26]) #1 $display("sa: %h", matrix[26]);
+  always @(matrix[27]) #1 $display("sb: %h", matrix[27]);
+  always @(matrix[28]) #1 $display("t3: %h", matrix[28]);
+  always @(matrix[29]) #1 $display("t4: %h", matrix[29]);
+  always @(matrix[30]) #1 $display("t5: %h", matrix[30]);
+  always @(matrix[31]) #1 $display("t6: %h", matrix[31]);
+  */
 endmodule
 
 
@@ -247,7 +250,7 @@ module m_imm_decoder(input [31:0] i_data, input [2:0] i_imm_ctl, output [31:0] o
     i_imm_ctl == 5 ? j : 
     0;
 
-  //always @(*) #1 $display("dec: %b - %b -> %b(%h)", i_imm_ctl, i_data, o_data, o_data);
+  // always @(*) #1 $display("dec: %b - %b -> %b(%h)", i_imm_ctl, i_data, o_data, o_data);
 endmodule
 
 module m_imm_dec_R(input [31:0] i_data, output [31:0] o_data);
@@ -264,7 +267,7 @@ endmodule
 
 module m_imm_dec_B(input [31:0] i_data, output [31:0] o_data);
   wire zero = 0;
-  assign o_data = {{19{i_data[31]}}, i_data[7], i_data[30:25], i_data[11:8], zero};
+  assign o_data = {{20{i_data[31]}}, i_data[7], i_data[30:25], i_data[11:8], zero};
 endmodule
 
 module m_imm_dec_U(input [31:0] i_data, output [31:0] o_data);
@@ -274,7 +277,7 @@ endmodule
 
 module m_imm_dec_J(input [31:0] i_data, output [31:0] o_data);
   wire zero = 0;
-  assign o_data = {{11{i_data[31]}}, i_data[19:12], i_data[20], i_data[30:21], zero};
+  assign o_data = {{12{i_data[31]}}, i_data[19:12], i_data[20], i_data[30:21], zero};
 endmodule
 
 
@@ -393,28 +396,30 @@ endmodule
 
 `default_nettype wire 
 
-//wire [31:0] out = 
-//    i_inst === 'b0000000_?????_?????_000_?????_0110011 ? s_add  : // add
-//    i_inst === 'b0000000_?????_?????_111_?????_0110011 ? s_and  : // and
-//    i_inst === 'b0100000_?????_?????_000_?????_0110011 ? s_sub  : // sub
-//    i_inst === 'b0000000_?????_?????_010_?????_0110011 ? s_slt  : // slt
-//    i_inst === 'b0000001_?????_?????_100_?????_0110011 ? s_div  : // div
-//    i_inst === 'b0000001_?????_?????_110_?????_0110011 ? s_rem  : // rem
-//    i_inst === 'b0000000_?????_?????_001_?????_0110011 ? s_sll  : // sll
-//    i_inst === 'b0000000_?????_?????_101_?????_0110011 ? s_srl  : // srl
-//    i_inst === 'b0100000_?????_?????_101_?????_0110011 ? s_sra  : // sra
+/*
+  wire [31:0] out = 
+      i_inst === 'b0000000_?????_?????_000_?????_0110011 ? s_add  : // add
+      i_inst === 'b0000000_?????_?????_111_?????_0110011 ? s_and  : // and
+      i_inst === 'b0100000_?????_?????_000_?????_0110011 ? s_sub  : // sub
+      i_inst === 'b0000000_?????_?????_010_?????_0110011 ? s_slt  : // slt
+      i_inst === 'b0000001_?????_?????_100_?????_0110011 ? s_div  : // div
+      i_inst === 'b0000001_?????_?????_110_?????_0110011 ? s_rem  : // rem
+      i_inst === 'b0000000_?????_?????_001_?????_0110011 ? s_sll  : // sll
+      i_inst === 'b0000000_?????_?????_101_?????_0110011 ? s_srl  : // srl
+      i_inst === 'b0100000_?????_?????_101_?????_0110011 ? s_sra  : // sra
 
-//    i_inst === 'b???????_?????_?????_000_?????_0010011 ? s_addi : // addi
+      i_inst === 'b???????_?????_?????_000_?????_0010011 ? s_addi : // addi
 
-//    i_inst === 'b???????_?????_?????_000_?????_1100011 ? s_beq  : // beq
-//    i_inst === 'b???????_?????_?????_001_?????_1100011 ? s_bne  : // bne
-//    i_inst === 'b???????_?????_?????_100_?????_1100011 ? s_blt  : // blt
+      i_inst === 'b???????_?????_?????_000_?????_1100011 ? s_beq  : // beq
+      i_inst === 'b???????_?????_?????_001_?????_1100011 ? s_bne  : // bne
+      i_inst === 'b???????_?????_?????_100_?????_1100011 ? s_blt  : // blt
 
-//    i_inst === 'b???????_?????_?????_010_?????_0000011 ? s_lw   : // lw
-//    i_inst === 'b???????_?????_?????_010_?????_0100011 ? s_sw   : // sw
-//    i_inst === 'b???????_?????_?????_???_?????_0110111 ? s_lui  : // lui
+      i_inst === 'b???????_?????_?????_010_?????_0000011 ? s_lw   : // lw
+      i_inst === 'b???????_?????_?????_010_?????_0100011 ? s_sw   : // sw
+      i_inst === 'b???????_?????_?????_???_?????_0110111 ? s_lui  : // lui
 
-//    i_inst === 'b???????_?????_?????_???_?????_1101111 ? s_jal  : // jal
-//    i_inst === 'b???????_?????_?????_000_?????_1100111 ? s_jalr : // jalr
-//    i_inst === 'b???????_?????_?????_???_?????_0010111 ? s_aui  : // auipc
-//    0;
+      i_inst === 'b???????_?????_?????_???_?????_1101111 ? s_jal  : // jal
+      i_inst === 'b???????_?????_?????_000_?????_1100111 ? s_jalr : // jalr
+      i_inst === 'b???????_?????_?????_???_?????_0010111 ? s_aui  : // auipc
+      0;
+*/
