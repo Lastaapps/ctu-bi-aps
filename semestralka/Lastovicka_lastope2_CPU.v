@@ -1,4 +1,6 @@
 `default_nettype none
+
+/** Links all the components together - RAM is external */
 module m_processor( input i_clk, i_reset,
                   output [31:0] o_PC,
                   input  [31:0] i_inst,
@@ -121,12 +123,10 @@ endmodule
 
 
 
-
-/** Operation codes decoder
-  */
+/** Operation codes decoder */
 module m_controller(input [31:0] i_inst,
                     output [2:0] o_imm_ctl,
-                    output o_alu_src, // 0 - register, 1 - imm
+                    output o_alu_src,
                     output [3:0] o_alu_ctl,
 
                     output o_mem_write,
@@ -140,6 +140,8 @@ module m_controller(input [31:0] i_inst,
                     output o_br_bne,
                     output o_br_blt,
                     output o_aui);
+
+  // Output definition
 
   // register arithmetic
   wire [17:0] s_add  = 'b000_0_0000_0010_00000_0; // add
@@ -181,12 +183,14 @@ module m_controller(input [31:0] i_inst,
   wire [17:0] s_jalr = 'b001_1_0000_0010_10000_0; // jump relative to rd
   wire [17:0] s_aui  = 'b100_0_0000_0010_00000_1; // rd <- rn + PC
 
+
   // parsing
   wire [6:0] opt  = i_inst[6:0];
   wire [3:0] fun3 = i_inst[14:12];
   wire [6:0] fun7 = i_inst[31:25];
 
   wire [31:0] out = 
+    // register arithmetic
     opt == 'b0110011 ? ( 
       fun3 == 'b000 ? 
         fun7 == 'b0000000 ? s_add : // add
@@ -214,6 +218,7 @@ module m_controller(input [31:0] i_inst,
         fun7 == 'b0000000 ? s_sltu : 0 : // sltu
     0) :
 
+    // immediate arithmetic
     opt == 'b0010011 ? 
       fun3 == 'b000 ? s_addi : // addi
       fun3 == 'b001 ? s_slli : // slli
@@ -228,18 +233,21 @@ module m_controller(input [31:0] i_inst,
       fun3 == 'b111 ? s_andi : // andi
       0 :
 
+    // branching
     opt == 'b1100011 ? 
       fun3 == 'b000 ? s_beq  : // beq
       fun3 == 'b001 ? s_bne  : // bne
       fun3 == 'b100 ? s_blt  : // blt
       0 :
 
+    // memory
     opt == 'b0000011 ?
       fun3 == 'b010 ? s_lw   : 0 : // lw
     opt == 'b0100011 ?
       fun3 == 'b010 ? s_sw   : 0 : // sw
     opt == 'b0110111 ? s_lui  : // lui
 
+    // jumps
     opt == 'b1101111 ? s_jal  : // jal
     opt == 'b1100111 ? 
       fun3 == 'b000 ? s_jalr : 0 : // jalr
@@ -261,24 +269,30 @@ endmodule
 
 
 
-/* Decodes data stored in an instruction
-* R - 000
-* I - 001
-* S - 010
-* B - 011
-* U - 100
-* J - 101
-* I'- 110
-*/
+/** Decodes data stored in an instruction
+  * R - 000
+  * I - 001
+  * S - 010
+  * B - 011
+  * U - 100
+  * J - 101
+  * A - 110
+  *
+  * A is no an usual encoding. It's similar to I, but first 7 bits are trimmed
+  * it is used by bit shift instructions
+  * https://stackoverflow.com/questions/39489318/risc-v-implementing-slli-srli-and-srai
+  */
 module m_imm_decoder(input [31:0] i_data, input [2:0] i_imm_ctl, output [31:0] o_data);
-  wire [31:0] r, i, s, b, u, j, is;
-  m_imm_dec_R u_r(i_data, r);
-  m_imm_dec_I u_i(i_data, i);
-  m_imm_dec_S u_s(i_data, s);
-  m_imm_dec_B u_b(i_data, b);
-  m_imm_dec_U u_u(i_data, u);
-  m_imm_dec_J u_j(i_data, j);
-  m_imm_dec_I_short u_j_s(i_data, is);
+
+  supply0 zero;
+
+  wire [31:0] r = 0;
+  wire [31:0] i = {{20{i_data[31]}}, i_data[31:20]};
+  wire [31:0] s = {{20{i_data[31]}}, i_data[31:25], i_data[11:7]};
+  wire [31:0] b = {{20{i_data[31]}}, i_data[7], i_data[30:25], i_data[11:8], zero};
+  wire [31:0] u = {i_data[31:12], {12{zero}}};
+  wire [31:0] j = {{12{i_data[31]}}, i_data[19:12], i_data[20], i_data[30:21], zero};
+  wire [31:0] a = {{27{i_data[24]}}, i_data[24:20]};
 
   assign o_data =
     i_imm_ctl == 0 ? r : 
@@ -287,45 +301,11 @@ module m_imm_decoder(input [31:0] i_data, input [2:0] i_imm_ctl, output [31:0] o
     i_imm_ctl == 3 ? b : 
     i_imm_ctl == 4 ? u : 
     i_imm_ctl == 5 ? j : 
-    i_imm_ctl == 6 ? is : 
+    i_imm_ctl == 6 ? a : 
     0;
 
   // always @(*) #1 $display("dec: %b - %b -> %b(%h)", i_imm_ctl, i_data, o_data, o_data);
 endmodule
-
-module m_imm_dec_R(input [31:0] i_data, output [31:0] o_data);
-  assign o_data = 0;
-endmodule
-
-module m_imm_dec_I(input [31:0] i_data, output [31:0] o_data);
-  assign o_data = {{20{i_data[31]}}, i_data[31:20]};
-endmodule
-
-module m_imm_dec_I_short(input [31:0] i_data, output [31:0] o_data);
-  assign o_data = {{27{i_data[24]}}, i_data[24:20]};
-endmodule
-
-module m_imm_dec_S(input [31:0] i_data, output [31:0] o_data);
-  assign o_data = {{20{i_data[31]}}, i_data[31:25], i_data[11:7]};
-endmodule
-
-module m_imm_dec_B(input [31:0] i_data, output [31:0] o_data);
-  wire zero = 0;
-  assign o_data = {{20{i_data[31]}}, i_data[7], i_data[30:25], i_data[11:8], zero};
-endmodule
-
-module m_imm_dec_U(input [31:0] i_data, output [31:0] o_data);
-  wire [11:0] zero = 0;
-  assign o_data = {i_data[31:12], zero};
-endmodule
-
-module m_imm_dec_J(input [31:0] i_data, output [31:0] o_data);
-  wire zero = 0;
-  assign o_data = {{12{i_data[31]}}, i_data[19:12], i_data[20], i_data[30:21], zero};
-endmodule
-
-
-
 
 
 
@@ -387,8 +367,9 @@ module m_alu(input signed [31:0] i_d0, i_d1, input [3:0] i_ctl, output [31:0] o_
   assign o_data = result;
 endmodule
 
-/**
-  * Reset-able register
+/** Reset-able register
+  * updates it's value to the next one on clk tick unless reset is on
+  * if reset is 1, 0 is saved to the register
   */
 module m_reset(input i_clk, i_reset, input [31:0] i_data, output reg [31:0] o_out);
   always @(posedge i_clk) begin
@@ -397,7 +378,7 @@ module m_reset(input i_clk, i_reset, input [31:0] i_data, output reg [31:0] o_ou
   end
 endmodule
 
-
+// down just to see not warnings in the top main part
 module processor( input clk, reset,
                   output [31:0] PC,
                   input  [31:0] instruction,
@@ -410,31 +391,3 @@ module processor( input clk, reset,
 endmodule
 
 `default_nettype wire 
-
-/*
-  wire [31:0] out = 
-      i_inst === 'b0000000_?????_?????_000_?????_0110011 ? s_add  : // add
-      i_inst === 'b0000000_?????_?????_111_?????_0110011 ? s_and  : // and
-      i_inst === 'b0100000_?????_?????_000_?????_0110011 ? s_sub  : // sub
-      i_inst === 'b0000000_?????_?????_010_?????_0110011 ? s_slt  : // slt
-      i_inst === 'b0000001_?????_?????_100_?????_0110011 ? s_div  : // div
-      i_inst === 'b0000001_?????_?????_110_?????_0110011 ? s_rem  : // rem
-      i_inst === 'b0000000_?????_?????_001_?????_0110011 ? s_sll  : // sll
-      i_inst === 'b0000000_?????_?????_101_?????_0110011 ? s_srl  : // srl
-      i_inst === 'b0100000_?????_?????_101_?????_0110011 ? s_sra  : // sra
-
-      i_inst === 'b???????_?????_?????_000_?????_0010011 ? s_addi : // addi
-
-      i_inst === 'b???????_?????_?????_000_?????_1100011 ? s_beq  : // beq
-      i_inst === 'b???????_?????_?????_001_?????_1100011 ? s_bne  : // bne
-      i_inst === 'b???????_?????_?????_100_?????_1100011 ? s_blt  : // blt
-
-      i_inst === 'b???????_?????_?????_010_?????_0000011 ? s_lw   : // lw
-      i_inst === 'b???????_?????_?????_010_?????_0100011 ? s_sw   : // sw
-      i_inst === 'b???????_?????_?????_???_?????_0110111 ? s_lui  : // lui
-
-      i_inst === 'b???????_?????_?????_???_?????_1101111 ? s_jal  : // jal
-      i_inst === 'b???????_?????_?????_000_?????_1100111 ? s_jalr : // jalr
-      i_inst === 'b???????_?????_?????_???_?????_0010111 ? s_aui  : // auipc
-      0;
-*/
