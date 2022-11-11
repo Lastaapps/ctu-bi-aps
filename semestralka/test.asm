@@ -1,4 +1,28 @@
 
+# Manual - pozorne si procti
+#
+# Toto je test na semestralni praci z APS
+# Abyste ho mohli pouzit, tak musite splnit vsechny podminky nize
+# - mit ready bonusove instrukce
+# - mit navic naimplementovanou instrukci bne
+# - v testbenchi si zmenit maximalni rozsah instrukci
+#   upravte tyto radky (jiz upravene)
+#   inst_mem  imem(pc[8:2], instruction);
+#   module inst_mem (input  [6:0]  address,
+#   reg [31:0] RAM[127:0];
+#   $readmemh ("memfile_inst.hex",RAM,0,127);
+# - upravit pocet instrukci v testbenchi
+#   #100 -> #256 ci více
+# Test navic testuje instrukce or, xor a dale, ty si muzete odmazat :(
+#
+# Vysledek
+# Pokud test uspeje, tak v pameti na adrese
+# - 0x4 bude pocet upspesne splnenych testu
+# - 0x8 bude 1 pro uspech, -1 pro chybu
+# Pokud vam nefunguji skoky, tak se do pameti nezapise nejspise nic
+# To ze vam prosel tento test ale neznamena, ze to mate dobre :D
+# Hodne stesti, zdaru
+
 	li	s0, 0 # tests passed counter
 	li	s1, 0 # test result
 	
