@@ -85,7 +85,7 @@ inline Picture openFile(const char* filename) {
 inline void saveHistogram(const size_t* histogram) {
     const size_t * h = histogram;
     FILE * output = fopen("output.txt" ,"w");
-    // printf("Histogram: %lu %lu %lu %lu %lu\n", h[0], h[1], h[2], h[3], h[4] + h[5]);
+    printf("%lu %lu %lu %lu %lu\n", h[0], h[1], h[2], h[3], h[4] + h[5]);
     fprintf(output, "%lu %lu %lu %lu %lu", h[0], h[1], h[2], h[3], h[4] + h[5]);
     fclose(output);
 }
@@ -135,24 +135,17 @@ inline void convovle(const Picture * pic, size_t * histogram) {
 
             for (int32_t col = blockStart; col < blockEnd; ++col) {
 
-                uint8_t h;
+                int32_t h;
                 int32_t il, ir;
                 const int32_t ic = rw + col;
 
                 if (!(isBound || (il = col - 1) < 0 || (ir = col + 1) >= width)) {
+                    il += rw;
+                    ir += rw;
                     const int32_t it = rwm + col;
                     const int32_t ib = rwp + col;
 
-                    il += rw;
-                    ir += rw;
-
 #define toRange(c) ((c) > 255 ? 255 : (c) < 0 ? 0 : (c))
-#define r(x) ((int32_t)(x).r)
-#define g(x) ((int32_t)(x).g)
-#define b(x) ((int32_t)(x).b)
-
-                    int32_t c;
-                    float histo;
 
 // Is 20% slower than the original
 // #define rr(x, i) ((int32_t)(*(((uint8_t*) &(x)) + i)))
@@ -173,34 +166,71 @@ inline void convovle(const Picture * pic, size_t * histogram) {
 //                         }
 //                     }
 
-                    const Pixel * iic = &in[ic];
-                    const Pixel * iit = &in[it];
-                    const Pixel * iib = &in[ib];
-                    const Pixel * iil = &in[il];
-                    const Pixel * iir = &in[ir];
-                    Pixel * oo = &out[ic];
+                    int32_t r, g, b;
+                    Pixel ii;
 
-                    c = 5 * r(*iic) - (r(*iit) + r(*iib) + r(*iil) + r(*iir));
-                    c = toRange(c);
-                    histo = 0.2126 * c;
-                    oo->r = c;
+                    ii = in[ic];
+                    r = 5 * ii.r; g = 5 * ii.g; b = 5 * ii.b;
 
-                    c = 5 * g(*iic) - (g(*iit) + g(*iib) + g(*iil) + g(*iir));
-                    c = toRange(c);
-                    histo += 0.7152 * c;
-                    oo->g = c;
+                    ii = in[it];
+                    r -= ii.r; g -= ii.g; b -= ii.b;
 
-                    c = 5 * b(*iic) - (b(*iit) + b(*iib) + b(*iil) + b(*iir));
-                    c = toRange(c);
-                    h = round(histo + 0.0722 * c);
-                    oo->b = c;
+                    ii = in[ib];
+                    r -= ii.r; g -= ii.g; b -= ii.b;
+
+                    ii = in[il];
+                    r -= ii.r; g -= ii.g; b -= ii.b;
+
+                    ii = in[ir];
+                    r -= ii.r; g -= ii.g; b -= ii.b;
+
+                    r = toRange(r);
+                    g = toRange(g);
+                    b = toRange(b);
+
+                    out[ic].r = r;
+                    out[ic].g = g;
+                    out[ic].b = b;
+                    h = roundf(0.2126 * r + 0.7152 * g  + 0.0722 * b);
+
+                    // Improved original
+// #define r(x) ((int32_t)(x).r)
+// #define g(x) ((int32_t)(x).g)
+// #define b(x) ((int32_t)(x).b)
+                    //int32_t c;
+                    //float histo;
+                    //const Pixel * iic = in + ic;
+                    //const Pixel * iit = in + it;
+                    //const Pixel * iib = in + ib;
+                    //const Pixel * iil = in + il;
+                    //const Pixel * iir = in + ir;
+                    //Pixel * oo = out + ic;
+
+                    //c = 5 * r(*iic) - (r(*iit) + r(*iib) + r(*iil) + r(*iir));
+                    //c = toRange(c);
+                    //histo = 0.2126 * c;
+                    //oo->r = c;
+
+                    //c = 5 * g(*iic) - (g(*iit) + g(*iib) + g(*iil) + g(*iir));
+                    //c = toRange(c);
+                    //histo += 0.7152 * c;
+                    //oo->g = c;
+
+                    //c = 5 * b(*iic) - (b(*iit) + b(*iib) + b(*iil) + b(*iir));
+                    //c = toRange(c);
+                    //h = roundf(histo + 0.0722 * c);
+                    //oo->b = c;
 
                 } else {
-                    out[ic] = in[ic];
-                    h = round(0.2126 * in[ic].r + 0.7152 * in[ic].g  + 0.0722 * in[ic].b);
+                    Pixel ii = in[ic];
+                    out[ic] = ii;
+                    h = roundf(0.2126 * ii.r + 0.7152 * ii.g  + 0.0722 * ii.b);
                 }
 
+
+                // Slow
                 // ++histogram[h / (256 / 5)];
+                // Better than the slow above
                 if (h > 152)
                     if (h > 203)
                         ++histogram[4];
