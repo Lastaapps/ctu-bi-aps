@@ -16,6 +16,8 @@ typedef struct Picture_t {
     uint16_t height;
     int inFile;
     int outFile;
+    FILE * input;
+    FILE * output;
     uint16_t offset;
 } Picture;
 
@@ -26,60 +28,47 @@ void printAddressSpace() {
     system(cmd);
 }
 
-inline Picture openFile(const char* filename) {
+inline void openFile(Picture * pic, const char* filename) {
 
-    // printf("Opening file: %s\n", filename);
+    int inFile = open(filename, O_RDONLY);
+    int outFile = open("output.ppm", O_RDWR | O_CREAT | O_TRUNC, 0660);
+    // fdopen does not require files to be manually closed
 
-    Picture pic;
+    int offset;
     {
-        FILE * fp;
-        fp = fopen (filename, "r");
-        fscanf(fp, "P6 %hu %hu", &pic.width, &pic.height);
-        fclose(fp);
+        FILE * input = fdopen(inFile, "r");
+        fscanf(input, "P6 %hu %hu 255", &pic -> width, &pic -> height);
+        offset = ftell(input) + 1;
+
+        FILE * output = fdopen(outFile ,"wb");
+        fprintf(output, "P6\n%d\n%d\n255\n", pic -> width, pic -> height);
+        fflush(output);
+
+        pic -> input = input;
+        pic -> output = output;
     }
 
-    pic.offset = 0;
-    {
-        FILE * fp = fopen (filename, "rb");
-        FILE * output = fopen("output.ppm" ,"wb");
+    size_t size = lseek(inFile, 0, SEEK_END);
+    lseek(inFile, 0, SEEK_SET);
 
-        uint8_t newLinesToSkip = 4;
-        uint8_t tmp;
-        while (newLinesToSkip > 0) {
-            fread(&tmp, sizeof(uint8_t), 1, fp);
-            if (tmp == '\n') --newLinesToSkip;
-            ++pic.offset;
-            fwrite(&tmp, sizeof(uint8_t), 1, output);
-        }
-
-        fclose(fp);
-        fclose(output);
-    }
-
-    pic.inFile = open(filename, O_RDONLY);
-    pic.outFile = open("output.ppm", O_RDWR);
-
-    {
-        struct stat s;
-        fstat(pic.inFile, &s);
-        pic.size = s.st_size;
-    }
-
-    pic.data = (uint8_t*) mmap (
-        NULL, pic.size,
-        PROT_READ, MAP_PRIVATE, pic.inFile, 0
+    pic -> data = (uint8_t*) mmap (
+        NULL, size,
+        PROT_READ, MAP_PRIVATE, inFile, 0
     );
 
-    ftruncate(pic.outFile, pic.size);
+    ftruncate(outFile, size);
 
-    pic.out = (uint8_t*) mmap (
-        NULL, pic.size,
-        PROT_READ | PROT_WRITE, MAP_SHARED, pic.outFile, 0
+    pic -> out = (uint8_t*) mmap (
+        NULL, size,
+        PROT_READ | PROT_WRITE, MAP_SHARED, outFile, 0
     );
+
+    pic -> offset = offset;
+    pic -> size = size;
+    pic -> inFile = inFile;
+    pic -> outFile = outFile;
 
     // printAddressSpace();
-
-    return pic;
 }
 
 inline void saveHistogram(const size_t* histogram) {
@@ -92,10 +81,12 @@ inline void saveHistogram(const size_t* histogram) {
 
 inline void closeFiles(const Picture* pic) {
     munmap(pic->data, pic->size);
+    fclose(pic -> input);
     close(pic->inFile);
 
     msync (pic->out, pic->size, MS_SYNC);
     munmap(pic->out, pic->size);
+    fclose(pic -> output);
     close(pic->outFile);
 }
 
@@ -249,7 +240,8 @@ inline void convovle(const Picture * pic, size_t * histogram) {
 }
 
 int main(const int argsCount, const char** args) {
-    const Picture pic = openFile(args[1]);
+    Picture pic;
+    openFile(&pic, args[1]);
     size_t histogram[6] = {0, 0, 0, 0, 0, 0};
 
     convovle(&pic, histogram);
