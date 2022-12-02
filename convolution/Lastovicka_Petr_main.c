@@ -71,11 +71,26 @@ inline void openFile(Picture * pic, const char* filename) {
     // printAddressSpace();
 }
 
-inline void saveHistogram(const size_t* histogram) {
-    const size_t * h = histogram;
+inline uint32_t sumInteval(const uint32_t * histogram, uint8_t from, uint8_t to) {
+    uint32_t sum = 0;
+    for (uint8_t i = from; i < to; ++i)
+        sum += histogram[i];
+    sum += histogram[to];
+    return sum;
+}
+
+inline void saveHistogram(uint32_t* histogram) {
+    uint32_t * h = histogram;
     FILE * output = fopen("output.txt" ,"w");
-    printf("%lu %lu %lu %lu %lu\n", h[0], h[1], h[2], h[3], h[4] + h[5]);
-    fprintf(output, "%lu %lu %lu %lu %lu", h[0], h[1], h[2], h[3], h[4] + h[5]);
+
+    h[0] = sumInteval(h, 0, 50);
+    h[1] = sumInteval(h, 51, 101);
+    h[2] = sumInteval(h, 102, 152);
+    h[3] = sumInteval(h, 153, 203);
+    h[4] = sumInteval(h, 204, 255);
+
+    printf("%u %u %u %u %u\n", h[0], h[1], h[2], h[3], h[4]);
+    fprintf(output, "%u %u %u %u %u", h[0], h[1], h[2], h[3], h[4]);
     fclose(output);
 }
 
@@ -94,37 +109,24 @@ typedef struct Pixel_t {
     uint8_t r, g, b;
 } Pixel;
 
-#define blockIndex(block) ((block) / 3 * 3) * 64 / 3 + ((block) % 3) * 64 / 3;
-
-inline void convovle(const Picture * pic, size_t * histogram) {
-    // L1 cache has 64B block size
+inline void convovle(const Picture * pic, uint32_t * histogram) {
 
     const Pixel* in = (Pixel*) (pic->data + pic->offset);
     Pixel* out = (Pixel*) (pic->out + pic->offset);
 
     const int32_t width = pic->width;
-    const int32_t height = pic->height;
-    const int32_t area = width * height;
+    const int32_t heightMin1 = pic->height - 1;
 
-    int32_t blockEnd = blockIndex(0);
+        for (int32_t row = 0; row <= heightMin1; ++row) {
 
-    const int32_t blockCount = width / (64 / 3) + 1;
-    for (int32_t block = 0; block < blockCount; ++block) {
-
-        const int32_t blockStart = blockEnd;
-        blockEnd = blockIndex(block + 1);
-        blockEnd = blockEnd <= width ? blockEnd : width;
-
-        for (int32_t row = 0; row < height; ++row) {
-
-            int8_t isBound = 0;
             const int32_t rw  = row * width;
             int32_t rwm, rwp;
 
-            if ((rwm = rw - width) < 0 || (rwp = rw + width) >= area)
-                isBound = 1;
+            int8_t isBound = row == heightMin1 || (rwm = rw - width) < 0;
 
-            for (int32_t col = blockStart; col < blockEnd; ++col) {
+            rwp = rw + width;
+
+            for (int32_t col = 0; col < width; ++col) {
 
                 int32_t h;
                 int32_t il, ir;
@@ -137,25 +139,6 @@ inline void convovle(const Picture * pic, size_t * histogram) {
                     const int32_t ib = rwp + col;
 
 #define toRange(c) ((c) > 255 ? 255 : (c) < 0 ? 0 : (c))
-
-// Is 20% slower than the original
-// #define rr(x, i) ((int32_t)(*(((uint8_t*) &(x)) + i)))
-//                     for (uint8_t i = 0; i < 3; ++i) {
-//                         c = 5 * rr(in[ic], i) - (rr(in[it], i) + rr(in[ib], i) + rr(in[il], i) + rr(in[ir], i));
-//                         c = toRange(c);
-//                         *(((uint8_t*) &(out[ic])) + i) = c;
-//                         switch(i){
-//                             case 0:
-//                                 histo = 0.2126 * c;
-//                                 continue;
-//                             case 1:
-//                                 histo += 0.7152 * c;
-//                                 continue;
-//                             case 2:
-//                                 h = round(histo + 0.0722 * c);
-//                                 continue;
-//                         }
-//                     }
 
                     int32_t r, g, b;
                     Pixel ii;
@@ -182,7 +165,7 @@ inline void convovle(const Picture * pic, size_t * histogram) {
                     out[ic].r = r;
                     out[ic].g = g;
                     out[ic].b = b;
-                    h = roundf(0.2126 * r + 0.7152 * g  + 0.0722 * b);
+                    h = 0.2126 * r + 0.7152 * g  + 0.0722 * b + 0.5;
 
                     // Improved original
 // #define r(x) ((int32_t)(x).r)
@@ -215,34 +198,19 @@ inline void convovle(const Picture * pic, size_t * histogram) {
                 } else {
                     Pixel ii = in[ic];
                     out[ic] = ii;
-                    h = roundf(0.2126 * ii.r + 0.7152 * ii.g  + 0.0722 * ii.b);
+                    h = 0.2126 * ii.r + 0.7152 * ii.g  + 0.0722 * ii.b + 0.5;
                 }
 
 
-                // Slow
-                // ++histogram[h / (256 / 5)];
-                // Better than the slow above
-                if (h > 152)
-                    if (h > 203)
-                        ++histogram[4];
-                    else
-                        ++histogram[3];
-                else
-                    if (h > 101)
-                        ++histogram[2];
-                    else if (h > 50)
-                        ++histogram[1];
-                    else
-                        ++histogram[0];
+                ++histogram[h];
             }
-        }
     }
 }
 
 int main(const int argsCount, const char** args) {
     Picture pic;
     openFile(&pic, args[1]);
-    size_t histogram[6] = {0, 0, 0, 0, 0, 0};
+    uint32_t histogram[256] = {0};
 
     convovle(&pic, histogram);
 
