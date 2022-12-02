@@ -117,93 +117,65 @@ inline void convovle(const Picture * pic, uint32_t * histogram) {
     const int32_t width = pic->width;
     const int32_t heightMin1 = pic->height - 1;
 
-        for (int32_t row = 0; row <= heightMin1; ++row) {
+    for (int32_t row = 0; row <= heightMin1; ++row) {
 
-            const int32_t rw  = row * width;
-            int32_t rwm, rwp;
+        const int32_t rw  = row * width;
+        int32_t rwm, rwp;
 
-            int8_t isBound = row == heightMin1 || (rwm = rw - width) < 0;
+        int8_t isBound = row == heightMin1 || (rwm = rw - width) < 0;
 
-            rwp = rw + width;
+        rwp = rw + width;
 
-            for (int32_t col = 0; col < width; ++col) {
+        for (int32_t col = 0; col < width; ++col) {
 
-                int32_t h;
-                int32_t il, ir;
-                const int32_t ic = rw + col;
+            int32_t h;
+            int32_t il, ir;
+            const int32_t ic = rw + col;
 
-                if (!(isBound || (il = col - 1) < 0 || (ir = col + 1) >= width)) {
-                    il += rw;
-                    ir += rw;
-                    const int32_t it = rwm + col;
-                    const int32_t ib = rwp + col;
+            if (!(isBound || (il = col - 1) < 0 || (ir = col + 1) >= width)) {
+                il += rw;
+                ir += rw;
+                const int32_t it = rwm + col;
+                const int32_t ib = rwp + col;
 
 #define toRange(c) ((c) > 255 ? 255 : (c) < 0 ? 0 : (c))
 
-                    int32_t r, g, b;
-                    Pixel ii;
+                int32_t r, g, b;
+                Pixel ii;
 
-                    ii = in[ic];
-                    r = 5 * ii.r; g = 5 * ii.g; b = 5 * ii.b;
+                ii = in[ic];
+                r = 5 * ii.r; g = 5 * ii.g; b = 5 * ii.b;
 
-                    ii = in[it];
-                    r -= ii.r; g -= ii.g; b -= ii.b;
+                ii = in[it];
+                r -= ii.r; g -= ii.g; b -= ii.b;
 
-                    ii = in[ib];
-                    r -= ii.r; g -= ii.g; b -= ii.b;
+                ii = in[ib];
+                r -= ii.r; g -= ii.g; b -= ii.b;
 
-                    ii = in[il];
-                    r -= ii.r; g -= ii.g; b -= ii.b;
+                ii = in[il];
+                r -= ii.r; g -= ii.g; b -= ii.b;
 
-                    ii = in[ir];
-                    r -= ii.r; g -= ii.g; b -= ii.b;
+                ii = in[ir];
+                r -= ii.r; g -= ii.g; b -= ii.b;
 
-                    r = toRange(r);
-                    g = toRange(g);
-                    b = toRange(b);
+                r = toRange(r);
+                g = toRange(g);
+                b = toRange(b);
 
-                    out[ic].r = r;
-                    out[ic].g = g;
-                    out[ic].b = b;
-                    h = 0.2126 * r + 0.7152 * g  + 0.0722 * b + 0.5;
+                out[ic].r = r;
+                out[ic].g = g;
+                out[ic].b = b;
+                h = 0.2126 * r + 0.7152 * g  + 0.0722 * b + 0.5;
 
-                    // Improved original
-// #define r(x) ((int32_t)(x).r)
-// #define g(x) ((int32_t)(x).g)
-// #define b(x) ((int32_t)(x).b)
-                    //int32_t c;
-                    //float histo;
-                    //const Pixel * iic = in + ic;
-                    //const Pixel * iit = in + it;
-                    //const Pixel * iib = in + ib;
-                    //const Pixel * iil = in + il;
-                    //const Pixel * iir = in + ir;
-                    //Pixel * oo = out + ic;
-
-                    //c = 5 * r(*iic) - (r(*iit) + r(*iib) + r(*iil) + r(*iir));
-                    //c = toRange(c);
-                    //histo = 0.2126 * c;
-                    //oo->r = c;
-
-                    //c = 5 * g(*iic) - (g(*iit) + g(*iib) + g(*iil) + g(*iir));
-                    //c = toRange(c);
-                    //histo += 0.7152 * c;
-                    //oo->g = c;
-
-                    //c = 5 * b(*iic) - (b(*iit) + b(*iib) + b(*iil) + b(*iir));
-                    //c = toRange(c);
-                    //h = roundf(histo + 0.0722 * c);
-                    //oo->b = c;
-
-                } else {
-                    Pixel ii = in[ic];
-                    out[ic] = ii;
-                    h = 0.2126 * ii.r + 0.7152 * ii.g  + 0.0722 * ii.b + 0.5;
-                }
-
-
-                ++histogram[h];
+            } else {
+                Pixel ii = in[ic];
+                out[ic] = ii;
+                h = 0.2126 * ii.r + 0.7152 * ii.g  + 0.0722 * ii.b + 0.5;
             }
+
+
+            ++histogram[h];
+        }
     }
 }
 
