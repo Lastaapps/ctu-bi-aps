@@ -1,3 +1,5 @@
+#pragma GCC optimize("unroll-loops")
+
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
@@ -52,16 +54,16 @@ inline void openFile(Picture * pic, const char* filename) {
     lseek(inFile, 0, SEEK_SET);
 
     pic -> data = (uint8_t*) mmap (
-        NULL, size,
-        PROT_READ, MAP_PRIVATE, inFile, 0
-    );
+            NULL, size,
+            PROT_READ, MAP_PRIVATE, inFile, 0
+            );
 
     ftruncate(outFile, size);
 
     pic -> out = (uint8_t*) mmap (
-        NULL, size,
-        PROT_READ | PROT_WRITE, MAP_SHARED, outFile, 0
-    );
+            NULL, size,
+            PROT_READ | PROT_WRITE, MAP_SHARED, outFile, 0
+            );
 
     pic -> offset = offset;
     pic -> size = size;
@@ -71,7 +73,7 @@ inline void openFile(Picture * pic, const char* filename) {
     // printAddressSpace();
 }
 
-inline uint32_t sumInteval(const uint32_t * histogram, uint8_t from, uint8_t to) {
+uint32_t sumInteval(const uint32_t * histogram, uint8_t from, uint8_t to) {
     uint32_t sum = 0;
     for (uint8_t i = from; i < to; ++i)
         sum += histogram[i];
@@ -109,73 +111,81 @@ typedef struct Pixel_t {
     uint8_t r, g, b;
 } Pixel;
 
+#define toHisto(r, g, b) (uint8_t) (0.2126 * (r) + 0.7152 * (g)  + 0.0722 * (b) + 0.5)
+#define toRange(c) ((c) > 255 ? 255 : (c) < 0 ? 0 : (c))
+
+inline void copyRows(const Pixel* in, Pixel* out, uint32_t * histogram,  uint32_t i, uint32_t to) {
+    for (; i < to; ++i) {
+        Pixel ii = in[i];
+        out[i] = ii;
+
+        ++histogram[toHisto(ii.r, ii.g, ii.b)];
+    }
+}
+
 inline void convovle(const Picture * pic, uint32_t * histogram) {
 
     const Pixel* in = (Pixel*) (pic->data + pic->offset);
     Pixel* out = (Pixel*) (pic->out + pic->offset);
 
     const int32_t width = pic->width;
-    const int32_t heightMin1 = pic->height - 1;
+    const int32_t height = pic->height;
 
-    for (int32_t row = 0; row <= heightMin1; ++row) {
+    copyRows(in, out, histogram, 0, width);
+
+    for (int32_t row = 1; row < height - 1; ++row) {
 
         const int32_t rw  = row * width;
-        int32_t rwm, rwp;
+        {
+            Pixel ii = in[rw];
+            out[rw] = ii;
+            ++histogram[toHisto(ii.r, ii.g, ii.b)];
+        }
 
-        int8_t isBound = row == heightMin1 || (rwm = rw - width) < 0;
+        for (int32_t col = 1; col < width - 1; ++col) {
 
-        rwp = rw + width;
-
-        for (int32_t col = 0; col < width; ++col) {
-
-            int32_t h;
-            int32_t il, ir;
             const int32_t ic = rw + col;
 
-            if (!(isBound || (il = col - 1) < 0 || (ir = col + 1) >= width)) {
-                il += rw;
-                ir += rw;
-                const int32_t it = rwm + col;
-                const int32_t ib = rwp + col;
+            int32_t r, g, b;
+            Pixel ii;
 
-#define toRange(c) ((c) > 255 ? 255 : (c) < 0 ? 0 : (c))
+            ii = in[ic];
+            r = 5 * ii.r; g = 5 * ii.g; b = 5 * ii.b;
 
-                int32_t r, g, b;
-                Pixel ii;
+            ii = in[ic - width];
+            r -= ii.r; g -= ii.g; b -= ii.b;
 
-                ii = in[ic];
-                r = 5 * ii.r; g = 5 * ii.g; b = 5 * ii.b;
+            ii = in[ic + width];
+            r -= ii.r; g -= ii.g; b -= ii.b;
 
-                ii = in[it];
-                r -= ii.r; g -= ii.g; b -= ii.b;
+            ii = in[ic - 1];
+            r -= ii.r; g -= ii.g; b -= ii.b;
 
-                ii = in[ib];
-                r -= ii.r; g -= ii.g; b -= ii.b;
+            ii = in[ic + 1];
+            r -= ii.r; g -= ii.g; b -= ii.b;
 
-                ii = in[il];
-                r -= ii.r; g -= ii.g; b -= ii.b;
+            r = toRange(r);
+            g = toRange(g);
+            b = toRange(b);
 
-                ii = in[ir];
-                r -= ii.r; g -= ii.g; b -= ii.b;
+            out[ic].r = r;
+            out[ic].g = g;
+            out[ic].b = b;
 
-                r = toRange(r);
-                g = toRange(g);
-                b = toRange(b);
-
-                out[ic].r = r;
-                out[ic].g = g;
-                out[ic].b = b;
-                h = 0.2126 * r + 0.7152 * g  + 0.0722 * b + 0.5;
-
-            } else {
-                Pixel ii = in[ic];
-                out[ic] = ii;
-                h = 0.2126 * ii.r + 0.7152 * ii.g  + 0.0722 * ii.b + 0.5;
-            }
-
-
-            ++histogram[h];
+            ++histogram[toHisto(r, g, b)];
         }
+
+        {
+            const int32_t rwp = rw + width - 1;
+            Pixel ii = in[rwp];
+            out[rwp] = ii;
+            ++histogram[toHisto(ii.r, ii.g, ii.b)];
+        }
+    }
+
+    {
+        const uint32_t area = height * width;
+        copyRows(in, out, histogram, area - width, area);
     }
 }
 
